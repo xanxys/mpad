@@ -69,8 +69,9 @@ class Base:
 
 			seg_top = 0
 			segs_new = []
+			sum_log = sum(math.log(len(s)) for s in segs)
 			for (j, seg) in enumerate(segs):
-				seg_h = h * math.log(len(seg))/sum(math.log(len(s)) for s in segs)
+				seg_h = h * math.log(len(seg))/sum_log
 				seg_new = []
 				for (k,elem) in enumerate(seg):
 					elem_top = seg_top + 10*k
@@ -82,6 +83,7 @@ class Base:
 				seg_new = {
 					'top': seg_top,
 					'bottom': seg_top+seg_h,
+					'height': seg_h,
 					'children': seg_new
 				}
 				segs_new.append(seg_new)
@@ -99,12 +101,10 @@ class Base:
 
 		# draw links
 		for (i, level) in levels_new.items():
-
 			ls_ix = 0
 			for (j, seg) in enumerate(level['segments']):
-				seg_h = h * math.log(len(seg))/sum(math.log(len(s)) for s in segs)
 				for (k, elem) in enumerate(seg['children']):
-					dont_draw = k*10+10>seg_h
+					dont_draw = k*10+10>seg['height']
 
 					if type(elem['body']) is str and (elem['body'][0] == '[' or elem['body'][0] == '{'):
 						if not dont_draw:
@@ -116,36 +116,31 @@ class Base:
 						ls_ix += 1
 
 		# draw cont
-		_, h = w.window.get_size()
-		for (i, segs) in levels.items():
-			ctx.save()
-			ctx.translate(i*100,0)
-
-			for (j, seg) in enumerate(segs):
-				seg_h = h * math.log(len(seg))/sum(math.log(len(s)) for s in segs)
+		for (i, level) in levels_new.items():
+			for (j, seg) in enumerate(level['segments']):
+				# side line
 				ctx.set_source_rgb(0.8,0.9,0.8)
-				ctx.move_to(0,5)
-				ctx.line_to(0,seg_h-5)
+				ctx.move_to(level['left'],seg['top']+5)
+				ctx.line_to(level['left'],seg['bottom']-5)
 				ctx.stroke()
 
-				ctx.save()
-				ctx.translate(5,15)
-				for (k, elem) in enumerate(seg):
-					if k*10+10>seg_h:
+				for (k, elem) in enumerate(seg['children']):
+					if k*10+10>seg['height']:
 						break
 
-					if type(elem) is int:
+					# draw element
+					if type(elem['body']) is int:
 						ctx.set_source_rgb(0.682,0.506,0.999) # #AE81FF
+					elif type(elem['body']) is str and elem['body'][0] not in '[{':
+						ctx.set_source_rgb(0.902,0.859,0.455) # #E6DB74
 					else:
 						ctx.set_source_rgb(0.973,0.973,0.949) # #F8F8F2
-					ctx.text_path(str(elem))
+
+					ctx.save()
+					ctx.translate(elem['pos'][0]+5,elem['pos'][1]+10)
+					ctx.text_path(str(elem['body']))
 					ctx.fill()
-					ctx.translate(0, 10)
-				ctx.restore()
-
-				ctx.translate(0,seg_h)
-
-			ctx.restore()
+					ctx.restore()
 
 
 if __name__ == "__main__":
