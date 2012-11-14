@@ -62,6 +62,8 @@ class Base:
 		st(self.model)
 
 		# annotate w/ pos
+		seg_margin = 5
+
 		_, h = w.window.get_size()
 		levels_new = {}
 		level_left = 0
@@ -70,17 +72,26 @@ class Base:
 
 			seg_top = 0
 			segs_new = []
+			segs_accum = 0
 			sum_log = sum(math.log(len(s)) for s in segs)
 			for (j, seg) in enumerate(segs):
-				seg_h = h * math.log(len(seg))/sum_log
+				if segs_accum>h:
+					break
+
+				seg_h = max(seg_margin*2, h * math.log(len(seg))/sum_log)
 				seg_new = []
+				es_accum = 0
 				for (k,elem) in enumerate(seg):
+					if es_accum>seg_h:
+						break
 					elem_top = seg_top + 10*k
 					elem_new = {
 						'pos': (level_left, elem_top),
 						'body': elem
 					}
 					seg_new.append(elem_new)
+					es_accum += 10
+
 				seg_new = {
 					'top': seg_top,
 					'bottom': seg_top+seg_h,
@@ -89,6 +100,7 @@ class Base:
 				}
 				segs_new.append(seg_new)
 				seg_top += seg_h
+				segs_accum += seg_h
 
 			levels_new[i] = {
 				'left': level_left,
@@ -97,7 +109,6 @@ class Base:
 
 			level_left += level_width
 
-		#print(levels_new)
 		# 
 		ctx.translate(5,0)
 
@@ -110,12 +121,11 @@ class Base:
 					dont_draw = k*10+10>seg['height']
 
 					if type(elem['body']) is str and (elem['body'][0] == '[' or elem['body'][0] == '{'):
-						if not dont_draw:
-							ctx.set_source_rgb(0.3,0.3,0.3)
-							ctx.move_to(elem['pos'][0]+10, elem['pos'][1]+10)
-							ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['top']+5)
-							ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['bottom']-5)
-							ctx.fill()
+						ctx.set_source_rgb(0.3,0.3,0.3)
+						ctx.move_to(elem['pos'][0]+10, elem['pos'][1]+10)
+						ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['top']+seg_margin/2)
+						ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['bottom']-seg_margin/2)
+						ctx.fill()
 						ls_ix += 1
 
 		# draw cont
@@ -123,8 +133,8 @@ class Base:
 			for (j, seg) in enumerate(level['segments']):
 				# side line
 				ctx.set_source_rgb(0.8,0.9,0.8)
-				ctx.move_to(level['left'],seg['top']+5)
-				ctx.line_to(level['left'],seg['bottom']-5)
+				ctx.move_to(level['left'],seg['top']+seg_margin/2)
+				ctx.line_to(level['left'],seg['bottom']-seg_margin/2)
 				ctx.stroke()
 
 				for (k, elem) in enumerate(seg['children']):
