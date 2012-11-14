@@ -82,7 +82,7 @@ class Base:
 				seg_new = []
 				es_accum = 0
 				for (k,elem) in enumerate(seg):
-					if es_accum>seg_h:
+					if es_accum>seg_h-seg_margin*2:
 						break
 					elem_top = seg_top + 10*k
 					elem_new = {
@@ -118,8 +118,6 @@ class Base:
 			ls_ix = 0
 			for (j, seg) in enumerate(level['segments']):
 				for (k, elem) in enumerate(seg['children']):
-					dont_draw = k*10+10>seg['height']
-
 					if type(elem['body']) is str and (elem['body'][0] == '[' or elem['body'][0] == '{'):
 						ctx.set_source_rgb(0.3,0.3,0.3)
 						ctx.move_to(elem['pos'][0]+10, elem['pos'][1]+10)
@@ -128,7 +126,7 @@ class Base:
 						ctx.fill()
 						ls_ix += 1
 
-		# draw cont
+		# draw content
 		for (i, level) in levels_new.items():
 			for (j, seg) in enumerate(level['segments']):
 				# side line
@@ -138,10 +136,6 @@ class Base:
 				ctx.stroke()
 
 				for (k, elem) in enumerate(seg['children']):
-					if k*10+10>seg['height']:
-						break
-
-					# draw element
 					if type(elem['body']) is int or type(elem['body']) is float:
 						ctx.set_source_rgb(0.682,0.506,0.999) # #AE81FF
 					elif type(elem['body']) is str and elem['body'][0] not in '[{':
