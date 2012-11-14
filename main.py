@@ -14,6 +14,26 @@ import sys
 import math
 import msgpack
 
+def hsv2rgb(h, s, v):
+    h = float(h)
+    s = float(s)
+    v = float(v)
+    h60 = h / 60.0
+    h60f = math.floor(h60)
+    hi = int(h60f) % 6
+    f = h60 - h60f
+    p = v * (1 - s)
+    q = v * (1 - f * s)
+    t = v * (1 - (1 - f) * s)
+    r, g, b = 0, 0, 0
+    if hi == 0: r, g, b = v, t, p
+    elif hi == 1: r, g, b = q, v, p
+    elif hi == 2: r, g, b = p, v, t
+    elif hi == 3: r, g, b = p, q, v
+    elif hi == 4: r, g, b = t, p, v
+    elif hi == 5: r, g, b = v, p, q
+    return (r, g, b)
+
 class Base:
 	def __init__(self, model):
 		self.model = model
@@ -87,6 +107,9 @@ class Base:
 					elem_top = seg_top + 10*k
 					elem_new = {
 						'pos': (level_left, elem_top),
+						'left': level_left,
+						'top': elem_top,
+						'bottom': elem_top+10,
 						'body': elem
 					}
 					seg_new.append(elem_new)
@@ -117,27 +140,48 @@ class Base:
 		for (i, level) in levels_new.items():
 			ls_ix = 0
 			for (j, seg) in enumerate(level['segments']):
+				i_link = 0
 				for (k, elem) in enumerate(seg['children']):
 					if type(elem['body']) is str and (elem['body'][0] == '[' or elem['body'][0] == '{'):
-						ctx.set_source_rgb(0.3,0.3,0.3)
-						ctx.move_to(elem['pos'][0]+10, elem['pos'][1]+10)
+						if i_link%2 == 0:
+							ctx.set_source_rgb(0.2,0.2,0.2)
+						else:
+							ctx.set_source_rgb(0.3,0.3,0.3)
+						# CW
+						ctx.move_to(levels_new[i+1]['left']-30, elem['bottom'])
+						ctx.line_to(elem['left'], elem['bottom'])
+						ctx.line_to(elem['left'], elem['top'])
+						ctx.line_to(levels_new[i+1]['left']-30, elem['top'])
 						ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['top']+seg_margin/2)
 						ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['bottom']-seg_margin/2)
 						ctx.fill()
 						ls_ix += 1
+						i_link+=1
 
 		# draw content
 		for (i, level) in levels_new.items():
 			for (j, seg) in enumerate(level['segments']):
-				# side line
-				ctx.set_source_rgb(0.8,0.9,0.8)
-				ctx.move_to(level['left'],seg['top']+seg_margin/2)
-				ctx.line_to(level['left'],seg['bottom']-seg_margin/2)
+				# side line shadow
+				ctx.set_line_width(6)
+				ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+				ctx.set_source_rgb(0.1,0.1,0.1)
+				ctx.move_to(level['left'],seg['top']+seg_margin/1.2)
+				ctx.line_to(level['left'],seg['bottom']-seg_margin/1.2)
+				ctx.stroke()
+
+				# side line (TODO: implement scroll here?)
+				ctx.set_line_width(2)
+				ctx.set_line_cap(cairo.LINE_CAP_BUTT)
+				ctx.set_source_rgb(0.8,0.8,0.8)
+				ctx.move_to(level['left'],seg['top']+seg_margin/1.2)
+				ctx.line_to(level['left'],seg['bottom']-seg_margin/1.2)
 				ctx.stroke()
 
 				for (k, elem) in enumerate(seg['children']):
-					if type(elem['body']) is int or type(elem['body']) is float:
+					if type(elem['body']) is float:
 						ctx.set_source_rgb(0.682,0.506,0.999) # #AE81FF
+					elif type(elem['body']) is int:
+						ctx.set_source_rgb(0.702,0.806,0.999)
 					elif type(elem['body']) is str and elem['body'][0] not in '[{':
 						ctx.set_source_rgb(0.902,0.859,0.455) # #E6DB74
 					else:
