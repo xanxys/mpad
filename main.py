@@ -64,8 +64,9 @@ class Base:
 		# annotate w/ pos
 		_, h = w.window.get_size()
 		levels_new = {}
+		level_left = 0
 		for (i, segs) in levels.items():
-			level_left = i*100
+			level_width = max(50, 10+6*max(len(str(elem)) for seg in segs for elem in seg))
 
 			seg_top = 0
 			segs_new = []
@@ -93,6 +94,8 @@ class Base:
 				'left': level_left,
 				'segments': segs_new
 			}
+
+			level_left += level_width
 
 		#print(levels_new)
 		# 
