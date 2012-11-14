@@ -142,7 +142,7 @@ class Base:
 						break
 
 					# draw element
-					if type(elem['body']) is int:
+					if type(elem['body']) is int or type(elem['body']) is float:
 						ctx.set_source_rgb(0.682,0.506,0.999) # #AE81FF
 					elif type(elem['body']) is str and elem['body'][0] not in '[{':
 						ctx.set_source_rgb(0.902,0.859,0.455) # #E6DB74
