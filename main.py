@@ -73,12 +73,12 @@ class Base:
 			seg_top = 0
 			segs_new = []
 			segs_accum = 0
-			sum_log = sum(math.log(len(s)) for s in segs)
+			sum_log = sum(math.log(1+len(s)) for s in segs)
 			for (j, seg) in enumerate(segs):
 				if segs_accum>h:
 					break
 
-				seg_h = max(seg_margin*2, h * math.log(len(seg))/sum_log)
+				seg_h = max(seg_margin*2, h * math.log(1+len(seg))/sum_log)
 				seg_new = []
 				es_accum = 0
 				for (k,elem) in enumerate(seg):
