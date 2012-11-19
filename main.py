@@ -137,26 +137,30 @@ class Base:
 
 
 		# draw links
-		for (i, level) in levels_new.items():
-			ls_ix = 0
-			for (j, seg) in enumerate(level['segments']):
-				i_link = 0
-				for (k, elem) in enumerate(seg['children']):
-					if type(elem['body']) is str and (elem['body'][0] == '[' or elem['body'][0] == '{'):
-						if i_link%2 == 0:
-							ctx.set_source_rgb(0.2,0.2,0.2)
-						else:
-							ctx.set_source_rgb(0.3,0.3,0.3)
-						# CW
-						ctx.move_to(levels_new[i+1]['left']-30, elem['bottom'])
-						ctx.line_to(elem['left'], elem['bottom'])
-						ctx.line_to(elem['left'], elem['top'])
-						ctx.line_to(levels_new[i+1]['left']-30, elem['top'])
-						ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['top']+seg_margin/2)
-						ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['bottom']-seg_margin/2)
-						ctx.fill()
-						ls_ix += 1
-						i_link+=1
+		try:
+			for (i, level) in levels_new.items():
+				ls_ix = 0
+				for (j, seg) in enumerate(level['segments']):
+					i_link = 0
+					for (k, elem) in enumerate(seg['children']):
+						if type(elem['body']) is str and (elem['body'][0] == '[' or elem['body'][0] == '{'):
+							if i_link%2 == 0:
+								ctx.set_source_rgb(0.2,0.2,0.2)
+							else:
+								ctx.set_source_rgb(0.3,0.3,0.3)
+							# CW
+							ctx.move_to(levels_new[i+1]['left']-30, elem['bottom'])
+							ctx.line_to(elem['left'], elem['bottom'])
+							ctx.line_to(elem['left'], elem['top'])
+							ctx.line_to(levels_new[i+1]['left']-30, elem['top'])
+							ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['top']+seg_margin/2)
+							ctx.line_to(levels_new[i+1]['left'], levels_new[i+1]['segments'][ls_ix]['bottom']-seg_margin/2)
+							ctx.fill()
+							ls_ix += 1
+							i_link+=1
+		except IndexError:
+			import traceback
+			traceback.print_exc()
 
 		# draw content
 		for (i, level) in levels_new.items():
