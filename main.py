@@ -14,26 +14,6 @@ import sys
 import math
 import msgpack
 
-def hsv2rgb(h, s, v):
-    h = float(h)
-    s = float(s)
-    v = float(v)
-    h60 = h / 60.0
-    h60f = math.floor(h60)
-    hi = int(h60f) % 6
-    f = h60 - h60f
-    p = v * (1 - s)
-    q = v * (1 - f * s)
-    t = v * (1 - (1 - f) * s)
-    r, g, b = 0, 0, 0
-    if hi == 0: r, g, b = v, t, p
-    elif hi == 1: r, g, b = q, v, p
-    elif hi == 2: r, g, b = p, v, t
-    elif hi == 3: r, g, b = p, q, v
-    elif hi == 4: r, g, b = t, p, v
-    elif hi == 5: r, g, b = v, p, q
-    return (r, g, b)
-
 class Base:
 	def __init__(self, model):
 		self.model = model
@@ -43,7 +23,9 @@ class Base:
 		self.window.connect('destroy', gtk.main_quit)
 
 		self.darea = gtk.DrawingArea()
+		self.darea.set_events(gtk.gdk.SCROLL_MASK)
 		self.darea.connect('expose_event', self.on_expose)
+		self.darea.connect('scroll_event', self.on_scroll)
 		self.window.add(self.darea)
 		self.window.show_all()
 
@@ -119,7 +101,8 @@ class Base:
 					'top': seg_top,
 					'bottom': seg_top+seg_h,
 					'height': seg_h,
-					'children': seg_new
+					'children': seg_new,
+					'total': len(seg)
 				}
 				segs_new.append(seg_new)
 				seg_top += seg_h
@@ -174,11 +157,14 @@ class Base:
 				ctx.stroke()
 
 				# side line (TODO: implement scroll here?)
+				part = max(0.01, len(seg['children']) / seg['total']) # prevent handle getting too small
 				ctx.set_line_width(2)
 				ctx.set_line_cap(cairo.LINE_CAP_BUTT)
 				ctx.set_source_rgb(0.8,0.8,0.8)
 				ctx.move_to(level['left'],seg['top']+seg_margin/1.2)
-				ctx.line_to(level['left'],seg['bottom']-seg_margin/1.2)
+				ctx.line_to(level['left'],min(
+					seg['bottom']-seg_margin/1.2,
+					seg['top']+seg_margin/1.2 + seg['height']*part))
 				ctx.stroke()
 
 				for (k, elem) in enumerate(seg['children']):
@@ -196,6 +182,9 @@ class Base:
 					ctx.text_path(str(elem['body']))
 					ctx.fill()
 					ctx.restore()
+
+	def on_scroll(self, w, ev):
+		print(ev)
 
 
 if __name__ == "__main__":
