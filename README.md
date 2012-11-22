@@ -3,7 +3,7 @@ mpad
 
 Minimalistic MessagePack data viewer written with pygtk.
 
-![screenshot](screenshot.png "screenshot")
+![screenshot](https://raw.github.com/xanxys/mpad/master/screenshot.png)
 
 TODO
 -----
