@@ -120,8 +120,8 @@ class Base:
 
 
 		# draw links
-		try:
-			for (i, level) in levels_new.items():
+		for (i, level) in levels_new.items():
+			try:
 				ls_ix = 0
 				for (j, seg) in enumerate(level['segments']):
 					i_link = 0
@@ -141,9 +141,9 @@ class Base:
 							ctx.fill()
 							ls_ix += 1
 							i_link+=1
-		except IndexError:
-			import traceback
-			traceback.print_exc()
+			except IndexError:
+				import traceback
+				traceback.print_exc()
 
 		# draw content
 		for (i, level) in levels_new.items():
@@ -157,7 +157,10 @@ class Base:
 				ctx.stroke()
 
 				# side line (TODO: implement scroll here?)
-				part = max(0.01, len(seg['children']) / seg['total']) # prevent handle getting too small
+				if seg['total'] == 0:
+					part = 1.0
+				else:
+					part = max(0.01, len(seg['children']) / seg['total']) # prevent handle getting too small
 				ctx.set_line_width(2)
 				ctx.set_line_cap(cairo.LINE_CAP_BUTT)
 				ctx.set_source_rgb(0.8,0.8,0.8)
