@@ -7,7 +7,7 @@ Minimalistic MessagePack data viewer written with pygtk.
 
 TODO
 -----
-* segment-wise scrolling
+* handle single term object
 * selecting and layout re-weighting based on selection
 * modifying values
 * saving
