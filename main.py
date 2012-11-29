@@ -70,8 +70,11 @@ class Term(object):
 		return self.t
 
 class Segment(object):
-	def __init__(self, e):
-		pass
+	def __init__(self, es):
+		self.terms = map(Term, es)
+
+		# layout
+		self.range = (0,len(es))
 
 	def layout(self, height):
 		pass
@@ -92,7 +95,8 @@ class Base(object):
 		self.do_group()
 
 		self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-		self.window.connect("delete_event", self.on_delete)
+		self.window.connect('check-resize', self.on_resize)
+		self.window.connect('delete_event', self.on_delete)
 		self.window.connect('destroy', gtk.main_quit)
 
 		self.darea = gtk.DrawingArea()
@@ -102,7 +106,14 @@ class Base(object):
 		self.window.add(self.darea)
 		self.window.show_all()
 
-		self.layout = None
+		self.color_scheme = {
+			'int': (0.702,0.806,0.999),
+			'float': (0.682,0.506,0.999),
+			'str': (0.902,0.859,0.455),
+			'binary': (0.902,0.859,0.855),
+			'dict': (0.973,0.973,0.949),
+			'list': (0.973,0.973,0.949)
+		}
 
 	def main(self):
 		gtk.main()
@@ -110,43 +121,46 @@ class Base(object):
 	def on_delete(self, w, ev):
 		return False
 
+	def on_resize(self, w):
+		self.do_layout(*w.get_size())
+
 	def do_group(self):
 		levels = {}
 		def st(e, lv=0):
 			if type(e) is list or type(e) is tuple:
-				levels.setdefault(lv,[]).append(map(Term, e))
+				levels.setdefault(lv,[]).append(Segment(e))
 				for x in e:
 					st(x, lv+1)
 			elif type(e) is dict:
 				es = list(x for pair in e.items() for x in pair)
-				levels.setdefault(lv,[]).append(map(Term, es))
+				levels.setdefault(lv,[]).append(Segment(es))
 				for x in es:
 					st(x, lv+1)
 
 		st(self.model)
-		self.levels = levels
+		self.columns = levels
 
 	def do_layout(self, w, h):
-		# annotate w/ pos
+		""" Annotate w/ pos """
 		seg_margin = 5
 
 		levels_new = {}
 		level_left = 0
-		for (i, segs) in self.levels.items():
-			level_width = max(elem.get_width() for seg in segs for elem in seg)
+		for (i, column) in self.columns.items():
+			level_width = max(elem.get_width() for seg in column for elem in seg.terms)
 
 			seg_top = 0
 			segs_new = []
 			segs_accum = 0
-			sum_log = sum(math.log(1+len(s)) for s in segs)
-			for (j, seg) in enumerate(segs):
+			sum_log = sum(math.log(1+len(seg.terms)) for seg in column)
+			for (j, seg) in enumerate(column):
 				if segs_accum>h:
 					break
 
-				seg_h = max(seg_margin*2, h * math.log(1+len(seg))/sum_log)
+				seg_h = max(seg_margin*2, h * math.log(1+len(seg.terms))/sum_log)
 				seg_new = []
 				es_accum = 0
-				for (k,elem) in enumerate(seg):
+				for (k,term) in enumerate(seg.terms):
 					if es_accum>seg_h-seg_margin*2:
 						break
 					elem_top = seg_top + 10*k
@@ -155,7 +169,7 @@ class Base(object):
 						'left': level_left,
 						'top': elem_top,
 						'bottom': elem_top+10,
-						'body': elem
+						'body': term
 					}
 					seg_new.append(elem_new)
 					es_accum += 10
@@ -166,7 +180,7 @@ class Base(object):
 					'bottom': seg_top+seg_h,
 					'height': seg_h,
 					'children': seg_new,
-					'total': len(seg)
+					'total': len(seg.terms)
 				}
 				segs_new.append(seg_new)
 				seg_top += seg_h
@@ -193,7 +207,6 @@ class Base(object):
 		ctx.set_source_rgb(0.153,0.157,0.133) # 272822
 		ctx.paint()
 
-		self.do_layout(*w.window.get_size())
 		ctx.translate(5,0)
 
 		seg_margin = 5
@@ -225,15 +238,6 @@ class Base(object):
 				traceback.print_exc()
 
 		# draw content
-		color_scheme = {
-			'int': (0.702,0.806,0.999),
-			'float': (0.682,0.506,0.999),
-			'str': (0.902,0.859,0.455),
-			'binary': (0.902,0.859,0.855),
-			'dict': (0.973,0.973,0.949),
-			'list': (0.973,0.973,0.949)
-		}
-
 		for (i, level) in self.layout.items():
 			for (j, seg) in enumerate(level['segments']):
 				# side line shadow
@@ -263,7 +267,7 @@ class Base(object):
 					ctx.translate(elem['pos'][0]+5,elem['pos'][1]+10)
 					ctx.text_path(elem['body'].as_string())
 
-					ctx.set_source_rgb(*color_scheme.get(elem['body'].get_type(), (1,0,0)))
+					ctx.set_source_rgb(*self.color_scheme.get(elem['body'].get_type(), (1,0,0)))
 					ctx.fill()
 					ctx.restore()
 
