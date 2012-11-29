@@ -11,24 +11,51 @@ pygtk.require('2.0')
 import gtk
 import cairo
 import sys
+import binascii
 import math
 import msgpack
+
 
 class Term(object):
 	"""
 	Term GUI element
+
+	compound term have corresponding Segment
 	"""
 	def __init__(self, e):
 		self.e = e
 
-		if type(e) is float or type(e) is int or type(e) is bool or type(e) is str:
+		if type(e) is float or type(e) is int or type(e) is bool:
 			self.s = str(e)
+			self.t = type(e).__name__
+		elif type(e) is str:
+			summary = e[:30]
+
+			# TODO: should check whole string even if only part of it is shown?
+			try: 
+				self.s = summary.decode('utf-8')
+				self.t = 'str'
+				if '\x00' in self.s:
+					self.s = binascii.hexlify(summary)
+					self.t = 'binary'
+			except UnicodeDecodeError:
+				self.s = binascii.hexlify(summary)
+				self.t = 'binary'
+			
+			if len(summary) < len(e):
+				self.s += '...[%dB]'%(len(e))
+			elif len(summary) == 0:
+				self.s += '[0B]'
+
 		elif type(e) is dict:
 			self.s = '{%d}'%len(e)
+			self.t = 'dict'
 		elif type(e) is tuple:
 			self.s = '[%d]'%len(e)
+			self.t = 'list'
 		else:
 			self.s = 'error'
+			self.t = 'error'
 	
 	def get_width(self):
 		return max(50, 10+6*len(self.s))
@@ -40,18 +67,29 @@ class Term(object):
 		return type(self.e) is dict or type(self.e) is tuple
 
 	def get_type(self):
-		return type(self.e).__name__
+		return self.t
 
 class Segment(object):
-	pass
+	def __init__(self, e):
+		pass
+
+	def layout(self, height):
+		pass
 
 class Column(object):
-	pass
+	""" Column consists of Segments or single Term (root) """
+	def __init__(self, e):
+		pass
+
+	def layout(self, height):
+		pass
+
 
 		
-class Base:
+class Base(object):
 	def __init__(self, model):
 		self.model = model
+		self.do_group()
 
 		self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
 		self.window.connect("delete_event", self.on_delete)
@@ -72,8 +110,7 @@ class Base:
 	def on_delete(self, w, ev):
 		return False
 
-	def do_layout(self, w, h):
-		# format
+	def do_group(self):
 		levels = {}
 		def st(e, lv=0):
 			if type(e) is list or type(e) is tuple:
@@ -87,13 +124,15 @@ class Base:
 					st(x, lv+1)
 
 		st(self.model)
+		self.levels = levels
 
+	def do_layout(self, w, h):
 		# annotate w/ pos
 		seg_margin = 5
 
 		levels_new = {}
 		level_left = 0
-		for (i, segs) in levels.items():
+		for (i, segs) in self.levels.items():
 			level_width = max(elem.get_width() for seg in segs for elem in seg)
 
 			seg_top = 0
@@ -120,6 +159,7 @@ class Base:
 					}
 					seg_new.append(elem_new)
 					es_accum += 10
+
 
 				seg_new = {
 					'top': seg_top,
@@ -189,8 +229,9 @@ class Base:
 			'int': (0.702,0.806,0.999),
 			'float': (0.682,0.506,0.999),
 			'str': (0.902,0.859,0.455),
+			'binary': (0.902,0.859,0.855),
 			'dict': (0.973,0.973,0.949),
-			'tuple': (0.973,0.973,0.949)
+			'list': (0.973,0.973,0.949)
 		}
 
 		for (i, level) in self.layout.items():
