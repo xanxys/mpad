@@ -314,7 +314,7 @@ if __name__ == "__main__":
         path = sys.argv[1]
         msg = msgpack.unpack(open(path,'rb'))
     except IndexError:
-        msg = [[1,2,3],[4,5,[6,7],8]]
+        msg = None
 
-    base = Base(msg)
+    base = Base((msg,))
     base.main()
