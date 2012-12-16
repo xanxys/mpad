@@ -19,3 +19,4 @@ NOT TODO
 * implement schema
 * corrupt file handling
 * stream handling
+* Turing-complete plugins

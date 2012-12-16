@@ -111,6 +111,10 @@ class Segment(object):
             term.bottom = term.top+10
             term.body = term
 
+    def importance(self):
+        raw = sum(2 if term.selected else 1 for term in self.terms)
+        return math.log(1+raw)
+
     def on_scroll(self, d):
         """ TODO: smooth scrolling """
         new_range = (self.range[0]+d, self.range[1]+d)
@@ -195,12 +199,12 @@ class Base(object):
 
             segs_new = []
             segs_accum = 0
-            sum_log = sum(math.log(1+len(seg.terms)) for seg in column)
+            sum_importance = sum(seg.importance() for seg in column)
             for (j, seg) in enumerate(column):
                 if segs_accum>h:
                     break
 
-                seg_h = max(seg_padding*2, h * math.log(1+len(seg.terms))/sum_log)
+                seg_h = max(seg_padding*10, h * seg.importance()/sum_importance)
                 seg.layout(seg_h, segs_accum, level_left)
 
                 segs_new.append(seg)
@@ -343,6 +347,7 @@ class Base(object):
                     # select this
                     term.selected = True
 
+                    self.do_layout(*self.window.get_size())
                     w.queue_draw_area(0,0,*self.window.get_size())
 
     def resolve_pos(self, pos):
