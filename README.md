@@ -7,11 +7,12 @@ Minimalistic MessagePack data viewer written with pygtk.
 
 TODO
 -----
-* selecting and layout re-weighting based on selection
+* layout re-weighting based on selection
 * modifying values
 * saving
 * add menu
 * adding/deleting values
+* multi-selection like ST2
 
 NOT TODO
 -----

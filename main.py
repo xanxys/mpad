@@ -4,6 +4,7 @@
 
 Description of .desktop file: http://developer.gnome.org/integration-guide/stable/desktop-files.html.en
 
+UI-related handler MUST NOT take more than 100ms.
 """
 from __future__ import division, print_function
 import pygtk
@@ -24,6 +25,7 @@ class Term(object):
     """
     def __init__(self, e):
         self.e = e
+        self.selected = False
 
         if type(e) is float or type(e) is int or type(e) is bool:
             self.s = str(e)
@@ -141,8 +143,9 @@ class Base(object):
         self.window.connect('destroy', gtk.main_quit)
 
         self.darea = gtk.DrawingArea()
-        self.darea.set_events(gtk.gdk.SCROLL_MASK)
+        self.darea.set_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.SCROLL_MASK)
         self.darea.connect('expose_event', self.on_expose)
+        self.darea.connect('button_press_event', self.on_press)
         self.darea.connect('scroll_event', self.on_scroll)
         self.window.add(self.darea)
         self.window.show_all()
@@ -286,7 +289,14 @@ class Base(object):
 
                 for (k, term) in enumerate(seg.children):
                     ctx.save()
-                    ctx.translate(term.pos[0]+5,term.pos[1]+10)
+                    ctx.translate(term.pos[0],term.pos[1])
+
+                    if term.selected:
+                        ctx.set_source_rgba(1.00, 1.00, 0.76, 0.3)
+                        ctx.rectangle(0,0,50,10)
+                        ctx.fill()
+
+                    ctx.translate(5,10)
                     ctx.text_path(term.body.as_string())
 
                     ctx.set_source_rgb(*self.color_scheme.get(term.body.get_type(), (1,0,0)))
@@ -307,6 +317,36 @@ class Base(object):
                 seg.layout(seg.height, seg.top, column['left'])
                 w.queue_draw_area(0,0,*self.window.get_size())
                 return
+
+    def on_press(self, w, ev):
+        def deselect_all():
+            for cl in self.layout.values():
+                for seg in cl['segments']:
+                    for term in seg.children:
+                        term.selected = False
+
+        for column in self.layout.values():
+            if not (column['left']<ev.x and ev.x<column['right']):
+                continue
+
+            for seg in column['segments']:
+                if not (seg.top<ev.y and ev.y<seg.bottom):
+                    continue
+
+                for term in seg.children:
+                    if not (term.pos[1]<ev.y and ev.y<term.pos[1]+10):
+                        continue
+
+                    # TODO: multi-select like ST2 in some modifier is present
+                    deselect_all()
+
+                    # select this
+                    term.selected = True
+
+                    w.queue_draw_area(0,0,*self.window.get_size())
+
+    def resolve_pos(self, pos):
+        pass
 
 
 if __name__ == "__main__":
