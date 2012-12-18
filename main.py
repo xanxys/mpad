@@ -1,6 +1,10 @@
 #!/bin/env python
 """
+Minimalistic mpad editor.
+
 UI-related handler MUST NOT take more than 100ms.
+
+Always prepare for large data, otherwise make it so obvious that no one will try.
 """
 from __future__ import division, print_function
 import pygtk
@@ -20,8 +24,15 @@ class Term(object):
     compound term have corresponding Segment
     """
     def __init__(self, e):
-        self.e = e
         self.selected = False
+        self.configure(e)
+
+    def set_string(self, s):
+        e = type(self.e)(s)
+        self.configure(e)
+
+    def configure(self, e):
+        self.e = e
 
         if type(e) is float or type(e) is int or type(e) is bool:
             self.s = str(e)
@@ -29,7 +40,8 @@ class Term(object):
         elif type(e) is str:
             summary = e[:30]
 
-            # TODO: should check whole string even if only part of it is shown?
+            # TODO: do whole checking of possibly long string in background and show it later.
+            # in first invocation, only do constant-length search.
             try: 
                 self.s = summary.decode('utf-8')
                 self.t = 'str'
@@ -141,11 +153,12 @@ class Base(object):
         self.window.connect('check-resize', self.on_resize)
         self.window.connect('delete_event', self.on_delete)
         self.window.connect('destroy', gtk.main_quit)
+        self.window.connect('key_press_event', self.on_key_press)
 
         self.darea = gtk.DrawingArea()
         self.darea.set_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.SCROLL_MASK)
         self.darea.connect('expose_event', self.on_expose)
-        self.darea.connect('button_press_event', self.on_press)
+        self.darea.connect('button_press_event', self.on_button_press)
         self.darea.connect('scroll_event', self.on_scroll)
         self.window.add(self.darea)
         self.window.show_all()
@@ -323,7 +336,7 @@ class Base(object):
                 w.queue_draw_area(0,0,*self.window.get_size())
                 return
 
-    def on_press(self, w, ev):
+    def on_button_press(self, w, ev):
         def deselect_all():
             for cl in self.layout.values():
                 for seg in cl['segments']:
@@ -347,9 +360,21 @@ class Base(object):
 
                     # select this
                     term.selected = True
+                    self.edit = term
 
                     self.do_layout(*self.window.get_size())
                     w.queue_draw_area(0,0,*self.window.get_size())
+
+    def on_key_press(self, w, ev):
+        if hasattr(self, 'edit') and self.edit != None:
+            print('appended',ev,ev.string)
+
+            if ev.keyval == gtk.gdk.keyval_from_name('BackSpace'):
+                self.edit.set_string(self.edit.as_string()[:-1])
+            else:
+                self.edit.set_string(self.edit.as_string()+ev.string)
+
+            w.queue_draw_area(0,0,*self.window.get_size())
 
     def resolve_pos(self, pos):
         pass

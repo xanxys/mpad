@@ -8,7 +8,6 @@ Minimalistic MessagePack data viewer written with pygtk.
 TODO
 -----
 * layout re-weighting based on selection
-* modifying values
 * saving
 * add menu
 * adding/deleting values
