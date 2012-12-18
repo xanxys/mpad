@@ -31,6 +31,21 @@ class Term(object):
         e = type(self.e)(s)
         self.configure(e)
 
+    def cast_to(self, t):
+        if t == 'string':
+            self.configure(str(t))
+        elif t == 'binary':
+            # TODO: use IEEE for float/double?
+            self.configure('')
+        elif t == 'dict':
+            self.configure({}) # TODO: propagate change to Segment
+        elif t == 'list':
+            self.configure([]) # TODO: propagate change to Segment
+        elif t == 'float':
+            self.configure(float(self.e))
+        elif t == 'int':
+            self.configure(int(self.e))
+
     def configure(self, e):
         self.e = e
 
@@ -143,11 +158,11 @@ class Column(object):
         pass
 
 
-        
+
 class Base(object):
+    """ Holds /live/ model of given data structure """
     def __init__(self, model):
-        self.model = model
-        self.do_group()
+        self.set_live_model_from(model)
 
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.connect('check-resize', self.on_resize)
@@ -184,7 +199,7 @@ class Base(object):
     def on_resize(self, w):
         self.do_layout(*w.get_size())
 
-    def do_group(self):
+    def set_live_model_from(self, model):
         levels = {}
         def st(e, lv=0):
             if type(e) is list or type(e) is tuple:
@@ -197,7 +212,7 @@ class Base(object):
                 for x in es:
                     st(x, lv+1)
 
-        st(self.model)
+        st(model)
         self.columns = levels
 
     def do_layout(self, w, h):
@@ -363,20 +378,33 @@ class Base(object):
                     self.edit = term
 
                     self.do_layout(*self.window.get_size())
-                    w.queue_draw_area(0,0,*self.window.get_size())
+                    self.darea.queue_draw_area(0,0,*self.window.get_size())
 
                     if ev.button == 3: # right click: context menu
                         newmenu=gtk.Menu()
 
                         items = {}
+
                         item = gtk.RadioMenuItem(label='null')
+                        items['null'] = item
                         item.set_active(term.get_type() == 'null')
                         newmenu.append(item)
 
                         for label in ['str','binary','int','float','double','list','dict']:
                             it = gtk.RadioMenuItem(label=label, group=item)
+                            items[label] = it
                             it.set_active(term.get_type() == label)
                             newmenu.append(it)
+
+                        def handle_cast(w):
+                            for (l, w) in items.items():
+                                if w.get_active():
+                                    term.cast_to(l)
+                                    self.do_layout()
+                                    self.darea.queue_draw_area(0,0,*self.window.get_size())
+                                    break
+
+                        item.connect('group-changed', handle_cast)
 
                         newmenu.popup(None, None, None, ev.button, ev.time)
                         newmenu.show_all()
@@ -391,7 +419,9 @@ class Base(object):
             else:
                 self.edit.set_string(self.edit.as_string()+ev.string)
 
-            w.queue_draw_area(0,0,*self.window.get_size())
+            # self.do_layout()
+
+            self.darea.queue_draw_area(0,0,*self.window.get_size())
 
     def resolve_pos(self, pos):
         pass
