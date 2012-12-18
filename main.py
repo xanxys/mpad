@@ -1,9 +1,5 @@
 #!/bin/env python
 """
-/usr/share/applications/xanxys.desktop is needed to launch from gnome menu or nautilus "open with" dialog.
-
-Description of .desktop file: http://developer.gnome.org/integration-guide/stable/desktop-files.html.en
-
 UI-related handler MUST NOT take more than 100ms.
 """
 from __future__ import division, print_function

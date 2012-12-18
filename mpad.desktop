@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=mpad
+Comment=A minimalistic messagepack editor
+Comment[ja]=シンプルなMessagePackエディタ
+Exec=/home/xyx/research/mpad/main.py %f
+Terminal=false

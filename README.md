@@ -20,3 +20,11 @@ NOT TODO
 * corrupt file handling
 * stream handling
 * Turing-complete plugins
+
+
+Installation
+-----
+- put main.py somewhere convenient
+- rewrite Exec section of mpad.desktop to point to the main.py
+- put mpad.desktop under /usr/share/applications
+- you can now use nautilus "open with..." to associate mpad
