@@ -8,8 +8,7 @@ Minimalistic MessagePack data viewer written with pygtk.
 TODO
 -----
 * ensure all portion of any data is visible and editable in reasonable time
-* saving/opening (or autosaving and undo/redo)
-* add menu
+* autosaving and visible snapshots to replace undo/redo
 * add Input Method support
 * add copy/pasting
 * adding/deleting values

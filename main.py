@@ -311,7 +311,7 @@ class Base(object):
 
                     if term.selected:
                         ctx.set_source_rgba(1.00, 1.00, 0.76, 0.3)
-                        ctx.rectangle(0,0,50,10)
+                        ctx.rectangle(0,0,column['right']-column['left'],10)
                         ctx.fill()
 
                     ctx.translate(5,10)
@@ -364,6 +364,23 @@ class Base(object):
 
                     self.do_layout(*self.window.get_size())
                     w.queue_draw_area(0,0,*self.window.get_size())
+
+                    if ev.button == 3: # right click: context menu
+                        newmenu=gtk.Menu()
+
+                        items = {}
+                        item = gtk.RadioMenuItem(label='null')
+                        item.set_active(term.get_type() == 'null')
+                        newmenu.append(item)
+
+                        for label in ['str','binary','int','float','double','list','dict']:
+                            it = gtk.RadioMenuItem(label=label, group=item)
+                            it.set_active(term.get_type() == label)
+                            newmenu.append(it)
+
+                        newmenu.popup(None, None, None, ev.button, ev.time)
+                        newmenu.show_all()
+                        return True
 
     def on_key_press(self, w, ev):
         if hasattr(self, 'edit') and self.edit != None:
