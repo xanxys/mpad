@@ -154,13 +154,16 @@ class Base(object):
         self.window.add(self.darea)
         self.window.show_all()
 
-        self.color_scheme = {
-            'int': (0.702,0.806,0.999),
-            'float': (0.682,0.506,0.999),
-            'str': (0.902,0.859,0.455),
-            'binary': (0.902,0.859,0.855),
-            'dict': (0.973,0.973,0.949),
-            'list': (0.973,0.973,0.949)
+        self.config = {
+            'font': 'Inconsolata',
+            'color_scheme': {
+                'int': (0.702,0.806,0.999),
+                'float': (0.682,0.506,0.999),
+                'str': (0.902,0.859,0.455),
+                'binary': (0.902,0.859,0.855),
+                'dict': (0.973,0.973,0.949),
+                'list': (0.973,0.973,0.949)
+            }
         }
 
     def main(self):
@@ -262,6 +265,8 @@ class Base(object):
                 traceback.print_exc()
 
         # draw content
+        ctx.select_font_face(self.config['font'], cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+
         for column in self.layout.values():
             for seg in column['segments']:
                 sb_margin = 2
@@ -303,7 +308,7 @@ class Base(object):
                     ctx.translate(5,10)
                     ctx.text_path(term.body.as_string())
 
-                    ctx.set_source_rgb(*self.color_scheme.get(term.body.get_type(), (1,0,0)))
+                    ctx.set_source_rgb(*self.config['color_scheme'].get(term.body.get_type(), (1,0,0)))
                     ctx.fill()
                     ctx.restore()
 
