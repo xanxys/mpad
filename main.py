@@ -25,9 +25,11 @@ class Term(object):
     """
     def __init__(self, e):
         self.selected = False
+        self.pos = (0,0)
         self.configure(e)
 
     def set_string(self, s):
+        return
         e = type(self.e)(s)
         self.configure(e)
 
@@ -47,8 +49,6 @@ class Term(object):
             self.configure(int(self.e))
 
     def configure(self, e):
-        self.e = e
-
         if type(e) is float or type(e) is int or type(e) is bool:
             self.s = str(e)
             self.t = type(e).__name__
@@ -75,9 +75,11 @@ class Term(object):
         elif type(e) is dict:
             self.s = '{%d}'%len(e)
             self.t = 'dict'
+            self.e = Segment(e)
         elif type(e) is tuple:
             self.s = '[%d]'%len(e)
             self.t = 'list'
+            self.e = Segment(e)
         else:
             self.s = 'error'
             self.t = 'error'
@@ -89,17 +91,34 @@ class Term(object):
         return self.s
 
     def is_compound(self):
-        return type(self.e) is dict or type(self.e) is tuple
+        return self.t in ['dict','list']
+
+    def get_segment(self):
+        if self.is_compound():
+            return self.e
+        else:
+            return None
 
     def get_type(self):
         return self.t
 
 class Segment(object):
     def __init__(self, es):
-        self.terms = map(Term, es)
+        if type(es) is dict:
+            self.is_dict = True
+            self.terms = []
+            for (k,v) in es.iteritems():
+                self.terms.append(Term(k))
+                self.terms.append(Term(v))
+        else:
+            self.is_dict = False
+            self.terms = map(Term, es)
 
         # layout
+        self.top = 0
+        self.bottom = 10
         self.range = (0, len(self.terms))
+        self.total = len(self.terms)
 
     def layout(self, height, hoffset, woffset):
         """
@@ -150,9 +169,11 @@ class Segment(object):
         return self.terms[self.range[0]:self.range[1]]
 
 class Column(object):
-    """ Column consists of Segments or single Term (root) """
-    def __init__(self, e):
-        pass
+    def __init__(self):
+        self.segments = []
+
+    def append(self, segment):
+        self.segments.append(segment)
 
     def layout(self, height):
         pass
@@ -200,52 +221,42 @@ class Base(object):
         self.do_layout(*w.get_size())
 
     def set_live_model_from(self, model):
-        levels = {}
-        def st(e, lv=0):
-            if type(e) is list or type(e) is tuple:
-                levels.setdefault(lv,[]).append(Segment(e))
-                for x in e:
-                    st(x, lv+1)
-            elif type(e) is dict:
-                es = list(x for pair in e.items() for x in pair)
-                levels.setdefault(lv,[]).append(Segment(es))
-                for x in es:
-                    st(x, lv+1)
+        # convert object model to tree of Segment
+        root_seg = Segment(model)
 
-        st(model)
-        self.columns = levels
+        # pack Segment into depths by traversing
+        self.columns = {}
+        def pack(seg, lv=0):
+            self.columns.setdefault(lv,Column()).append(seg)
+            for t in seg.terms:
+                if t.is_compound():
+                    pack(t.get_segment(), lv+1)
+
+        pack(root_seg)
 
     def do_layout(self, w, h):
         """ Annotate w/ pos """
         seg_padding = 5
 
-        levels_new = {}
         level_left = 0
         for (i, column) in self.columns.items():
-            level_width = max(term.get_width() for seg in column for term in seg.terms)
+            level_width = max(term.get_width() for seg in column.segments for term in seg.terms)
 
-            segs_new = []
             segs_accum = 0
-            sum_importance = sum(seg.importance() for seg in column)
-            for (j, seg) in enumerate(column):
+            sum_importance = sum(seg.importance() for seg in column.segments)
+            for (j, seg) in enumerate(column.segments):
                 if segs_accum>h:
                     break
 
                 seg_h = max(seg_padding*10, h * seg.importance()/sum_importance)
                 seg.layout(seg_h, segs_accum, level_left)
 
-                segs_new.append(seg)
                 segs_accum += seg_h
 
-            levels_new[i] = {
-                'left': level_left,
-                'right': level_left+level_width,
-                'segments': segs_new
-            }
+            column.left = level_left
+            column.right = level_left + level_width
 
             level_left += level_width
-
-        self.layout = levels_new
 
     def on_expose(self, w, ev):
         """
@@ -262,37 +273,33 @@ class Base(object):
         seg_padding = 5
 
         # draw links
-        for (i, column) in self.layout.items():
-            try:
-                ls_ix = 0
-                for (j, seg) in enumerate(column['segments']):
-                    i_link = 0
-                    for (k, term) in enumerate(seg.children):
-                        if term.is_compound():
-                            if i_link%2 == 0:
-                                ctx.set_source_rgb(0.2,0.2,0.2)
-                            else:
-                                ctx.set_source_rgb(0.3,0.3,0.3)
+        for (i, column) in self.columns.items():
+            for (j, seg) in enumerate(column.segments):
+                i_link = 0
+                for (k, term) in enumerate(seg.children):
+                    if term.is_compound():
+                        if i_link%2 == 0:
+                            ctx.set_source_rgb(0.2,0.2,0.2)
+                        else:
+                            ctx.set_source_rgb(0.3,0.3,0.3)
 
-                            # CW
-                            ctx.move_to(self.layout[i+1]['left']-30, term.bottom)
-                            ctx.line_to(term.left, term.bottom)
-                            ctx.line_to(term.left, term.top)
-                            ctx.line_to(self.layout[i+1]['left']-30, term.top)
-                            ctx.line_to(self.layout[i+1]['left'], self.layout[i+1]['segments'][ls_ix].top+seg_padding/2)
-                            ctx.line_to(self.layout[i+1]['left'], self.layout[i+1]['segments'][ls_ix].bottom-seg_padding/2)
-                            ctx.fill()
-                            ls_ix += 1
-                            i_link+=1
-            except IndexError:
-                import traceback
-                traceback.print_exc()
+                        # CW
+                        seg_child = term.get_segment()
+
+                        ctx.move_to(self.columns[i+1].left-30, term.bottom)
+                        ctx.line_to(term.left, term.bottom)
+                        ctx.line_to(term.left, term.top)
+                        ctx.line_to(self.columns[i+1].left-30, term.top)
+                        ctx.line_to(self.columns[i+1].left, seg_child.top+seg_padding/2)
+                        ctx.line_to(self.columns[i+1].left, seg_child.bottom-seg_padding/2)
+                        ctx.fill()
+                        i_link+=1
 
         # draw content
         ctx.select_font_face(self.config['font'], cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
 
-        for column in self.layout.values():
-            for seg in column['segments']:
+        for column in self.columns.values():
+            for seg in column.segments:
                 sb_margin = 2
                 sb_width = 6
                 # seg_padding does not apply to scroll bar
@@ -300,8 +307,8 @@ class Base(object):
                 ctx.set_line_width(6)
                 ctx.set_line_cap(cairo.LINE_CAP_BUTT)
                 ctx.set_source_rgb(0.1,0.1,0.1)
-                ctx.move_to(column['left']+sb_width/2,seg.top+sb_margin)
-                ctx.line_to(column['left']+sb_width/2,seg.bottom-sb_margin)
+                ctx.move_to(column.left+sb_width/2,seg.top+sb_margin)
+                ctx.line_to(column.left+sb_width/2,seg.bottom-sb_margin)
                 ctx.stroke()
 
                 # side line
@@ -316,53 +323,58 @@ class Base(object):
                 ctx.set_line_width(2)
                 ctx.set_line_cap(cairo.LINE_CAP_BUTT)
                 ctx.set_source_rgb(0.8,0.8,0.8)
-                ctx.move_to(column['left']+sb_width/2,seg.top+sb_margin+len_wbar*p0)
+                ctx.move_to(column.left+sb_width/2,seg.top+sb_margin+len_wbar*p0)
                 ctx.rel_line_to(0, len_wbar*(p1-p0))
                 ctx.stroke()
 
                 for (k, term) in enumerate(seg.children):
+                    if term.pos == (0,0): # TODO: remove this hack
+                        break
+
                     ctx.save()
                     ctx.translate(term.pos[0],term.pos[1])
 
                     if term.selected:
                         ctx.set_source_rgba(1.00, 1.00, 0.76, 0.3)
-                        ctx.rectangle(0,0,column['right']-column['left'],10)
+                        ctx.rectangle(0,0,column.right-column.left,10)
                         ctx.fill()
 
                     ctx.translate(5,10)
-                    ctx.text_path(term.body.as_string())
+                    ctx.text_path(term.as_string())
 
-                    ctx.set_source_rgb(*self.config['color_scheme'].get(term.body.get_type(), (1,0,0)))
+                    ctx.set_source_rgb(*self.config['color_scheme'].get(term.get_type(), (1,0,0)))
                     ctx.fill()
                     ctx.restore()
 
+
+
     def on_scroll(self, w, ev):
-        for column in self.layout.values():
-            if not (column['left']<ev.x and ev.x<column['right']):
+        for column in self.columns.values():
+            if not (column.left<ev.x and ev.x<column.right):
                 continue
 
-            for seg in column['segments']:
+            for seg in column.segments:
                 if not (seg.top<ev.y and ev.y<seg.bottom):
                     continue
 
                 # handle scroll
                 seg.on_scroll(1 if ev.direction==gtk.gdk.SCROLL_DOWN else -1)
-                seg.layout(seg.height, seg.top, column['left'])
+                seg.layout(seg.height, seg.top, column.left)
                 w.queue_draw_area(0,0,*self.window.get_size())
                 return
 
     def on_button_press(self, w, ev):
         def deselect_all():
-            for cl in self.layout.values():
-                for seg in cl['segments']:
+            for cl in self.columns.values():
+                for seg in cl.segments:
                     for term in seg.children:
                         term.selected = False
 
-        for column in self.layout.values():
-            if not (column['left']<ev.x and ev.x<column['right']):
+        for column in self.columns.values():
+            if not (column.left<ev.x and ev.x<column.right):
                 continue
 
-            for seg in column['segments']:
+            for seg in column.segments:
                 if not (seg.top<ev.y and ev.y<seg.bottom):
                     continue
 
@@ -430,7 +442,7 @@ class Base(object):
 if __name__ == "__main__":
     try:
         path = sys.argv[1]
-        msg = msgpack.unpack(open(path,'rb'))
+        msg = msgpack.unpack(open(path,'rb')) # this is "instantaneous" for data under 100MB
     except IndexError:
         msg = None
 
